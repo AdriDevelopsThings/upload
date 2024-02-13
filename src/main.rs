@@ -6,6 +6,7 @@ use tokio::net::TcpListener;
 use crate::{auth::AuthConfig, state::State};
 
 mod auth;
+mod auth_helper;
 mod download;
 mod error;
 mod random;
@@ -28,7 +29,7 @@ async fn main() {
     let listener = TcpListener::bind(&listen_address)
         .await
         .expect("Error while listening on listen address");
-    println!("Server listening on http://{listen_address}");
+    println!("INFO: Server listening on http://{listen_address}");
     serve(listener, router)
         .await
         .expect("Error while serving http server");
