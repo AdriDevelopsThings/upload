@@ -1,11 +1,32 @@
 use std::{env, fs::read_to_string};
 
+use crate::auth::{
+    basic::{BasicAuth, BasicAuthArgument},
+    bearer::BearerAuthArgument,
+};
 use base64::prelude::*;
-use bcrypt::verify;
 use serde::Deserialize;
 
-fn true_fn() -> bool {
-    true
+use self::bearer::BearerAuthConfig;
+
+mod basic;
+mod bearer;
+
+/// iterate through a auth method until the authorization was successful or
+/// the method responded with a InvalidAuth error that contains a scheme (the authorization was partially successful)
+macro_rules! iterate_auth_method {
+    ($method:expr, $default_max_filesize:expr, $request:expr, $argument:expr) => {
+        for auth in $method {
+            let auth_resp = auth.authorize($request, $argument);
+            if let Ok(filesize) = auth_resp {
+                return Ok(filesize.unwrap_or($default_max_filesize));
+            } else if let Err(e) = auth_resp {
+                if let AuthError::InvalidAuth(Some(_)) = &e {
+                    return Err(e);
+                }
+            }
+        }
+    };
 }
 
 fn default_auth_scheme() -> String {
@@ -42,18 +63,8 @@ pub struct AuthConfig {
     pub allow_uploading_for_everyone: bool,
     #[serde(default)]
     pub basic: Vec<BasicAuth>,
-}
-
-#[derive(Clone, Deserialize)]
-pub struct BasicAuth {
-    pub username: String,
-    pub password: String,
     #[serde(default)]
-    pub max_filesize: Option<u64>,
-    #[serde(default = "true_fn")]
-    pub allow_download: bool,
-    #[serde(default = "true_fn")]
-    pub allow_upload: bool,
+    pub bearer: Vec<BearerAuthConfig>,
 }
 
 impl AuthConfig {
@@ -110,40 +121,23 @@ impl AuthConfig {
             if decoded.len() != 2 {
                 return Err(AuthError::InvalidAuth(None));
             }
-            for auth in &self.basic {
-                let auth_resp = auth.authorize(request, decoded[0], decoded[1]);
-                if let Err(e) = auth_resp {
-                    if let AuthError::InvalidAuth(Some(_)) = &e {
-                        return Err(e);
-                    }
-                } else if let Ok(filesize) = auth_resp {
-                    return Ok(filesize.unwrap_or(self.default_max_filesize));
+            iterate_auth_method!(
+                &self.basic,
+                self.default_max_filesize,
+                request,
+                BasicAuthArgument {
+                    username: decoded[0],
+                    password: decoded[1],
                 }
-            }
+            );
+        } else if splitted[0] == "Bearer" {
+            iterate_auth_method!(
+                &self.bearer,
+                self.default_max_filesize,
+                request,
+                BearerAuthArgument(splitted[1].to_string())
+            );
         }
-        Err(AuthError::InvalidAuth(None))
-    }
-}
-
-impl BasicAuth {
-    fn authorize(
-        &self,
-        request: &AuthRequest,
-        username: &str,
-        password: &str,
-    ) -> Result<Option<u64>, AuthError> {
-        if self.username == username {
-            // if the password is correct and this authorization does allow the required `AuthRequest`
-            if verify(password, &self.password).unwrap_or_default()
-                && ((request == &AuthRequest::Download && self.allow_download)
-                    || (request == &AuthRequest::Upload && self.allow_upload))
-            {
-                return Ok(self.max_filesize);
-            }
-            // incorrect password or permission, but the auth scheme seems to be right
-            return Err(AuthError::InvalidAuth(Some("Basic".to_string())));
-        }
-        // the username does not match
         Err(AuthError::InvalidAuth(None))
     }
 }

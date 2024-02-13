@@ -34,6 +34,13 @@ password = "bcrypt hashed password" # required
 max_filesize = 1024 # not required, uses `default_max_filesize` as default
 allow_download = true # not required, this is the default value
 allow_upload = true # not required, this is the default value
+
+[[bearer]]
+secret = "PLEASE USE A SAFE ONE" # required, jsonwebtoken HS256 secret, create with `openssl rand -hex 64`
+default_max_filesize = 1024 # not required, uses `default_max_filesize` as defualt
+default_permissions = ["download", "upload"] # not required, this is the default value
+max_filesize_field_name = "max_filesize" # the name of the field inside the json containing the max_filesize, not required, this is the default value
+permissions_field_name = "permissions" # the name of the field inside the json containing the permissions, not required, this is the default value
 ```
 
 # HTTP
