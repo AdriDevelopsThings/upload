@@ -43,6 +43,24 @@ max_filesize_field_name = "max_filesize" # the name of the field inside the json
 permissions_field_name = "permissions" # the name of the field inside the json containing the permissions, not required, this is the default value
 ```
 
+## Bearer authorization
+You can send the server an authorization header that looks like this: `Authoriztion: Bearer <Bearer token>`. The bearer token must be a jsonwebtoken. It's body must include the `exp` key containing the expiry date.
+You can extend the body by adding the `max_filesize` key and set it to the maximum filesize the user should can upload and by adding the `permissions` key and set it to an array of permissions (`download` and `upload` are possible).
+If these attributes aren't set the server will use the values from the bearer auth configuration (`default_permissions` and `default_max_filesize` (and if not set, the global max filesize)).
+It's also possible to change the names of the keys by changing the `max_filesize_field_name` and `permissions_field_name` config attribute.
+An example jsonwebtoken body looks like this:
+```json
+{
+    "exp": 1710342210,
+    "max_filesize": 1024,
+    "permissions": [
+        "download",
+        "upload"
+    ],
+    "additional_keys_are": "okay"
+}
+```
+
 # HTTP
 ## Uploading
 Request:
