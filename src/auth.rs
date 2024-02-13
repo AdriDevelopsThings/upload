@@ -12,6 +12,10 @@ fn default_auth_scheme() -> String {
     "Basic".to_string()
 }
 
+fn default_max_filesize() -> u64 {
+    1024 * 1024 * 1024 * 10 // 10 GB
+}
+
 #[derive(PartialEq)]
 pub enum AuthRequest {
     Upload,
@@ -27,6 +31,8 @@ pub enum AuthError {
 pub struct AuthConfig {
     #[serde(default = "default_auth_scheme")]
     pub default_auth_scheme: String,
+    #[serde(default = "default_max_filesize")]
+    pub default_max_filesize: u64,
     #[serde(default)]
     pub allow_uploading_for_everyone: bool,
     #[serde(default)]
@@ -39,6 +45,8 @@ pub struct AuthConfig {
 pub struct BasicAuth {
     pub username: String,
     pub password: String,
+    #[serde(default)]
+    pub max_filesize: Option<u64>,
     #[serde(default = "true_fn")]
     pub allow_download: bool,
     #[serde(default = "true_fn")]
@@ -63,11 +71,11 @@ impl AuthConfig {
         &self,
         request: &AuthRequest,
         authorization: Option<&str>,
-    ) -> Result<(), AuthError> {
+    ) -> Result<u64, AuthError> {
         if (request == &AuthRequest::Download && self.allow_downloading_for_everyone)
             || (request == &AuthRequest::Upload && self.allow_uploading_for_everyone)
         {
-            return Ok(());
+            return Ok(self.default_max_filesize);
         }
         if authorization.is_none() {
             return Err(AuthError::InvalidAuth(None));
@@ -94,8 +102,8 @@ impl AuthConfig {
                     if let AuthError::InvalidAuth(Some(_)) = &e {
                         return Err(e);
                     }
-                } else {
-                    return Ok(());
+                } else if let Ok(filesize) = auth_resp {
+                    return Ok(filesize.unwrap_or_else(|| self.default_max_filesize));
                 }
             }
         }
@@ -109,13 +117,13 @@ impl BasicAuth {
         request: &AuthRequest,
         username: &str,
         password: &str,
-    ) -> Result<(), AuthError> {
+    ) -> Result<Option<u64>, AuthError> {
         if self.username == username {
             if verify(password, &self.password).unwrap_or_default()
                 && ((request == &AuthRequest::Download && self.allow_download)
                     || (request == &AuthRequest::Upload && self.allow_upload))
             {
-                return Ok(());
+                return Ok(self.max_filesize);
             }
             return Err(AuthError::InvalidAuth(Some("Basic".to_string())));
         }

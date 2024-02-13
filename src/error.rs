@@ -9,6 +9,7 @@ pub enum UploadError {
     InternalServerError,
     FileNotExists,
     InvalidFilename,
+    FileIsTooBig(u64),
     InvalidBody,
     InvalidAuth(String),
 }
@@ -21,6 +22,8 @@ impl IntoResponse for UploadError {
             }
             Self::FileNotExists => (StatusCode::NOT_FOUND, "File does not exist").into_response(),
             Self::InvalidFilename => (StatusCode::BAD_REQUEST, "Invalid filename").into_response(),
+            Self::FileIsTooBig(max_filesize) =>
+                (StatusCode::BAD_REQUEST, format!("The file you tried to upload is too big. The maximum filesize is {max_filesize} bytes.")).into_response(),
             Self::InvalidBody => (StatusCode::BAD_GATEWAY, "Invalid POST body").into_response(),
             Self::InvalidAuth(scheme) => Response::builder()
                 .status(StatusCode::UNAUTHORIZED)

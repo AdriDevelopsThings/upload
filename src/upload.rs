@@ -5,7 +5,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use tokio::{
-    fs::{rename, File},
+    fs::{remove_file, rename, File},
     io::AsyncWriteExt,
 };
 
@@ -29,7 +29,7 @@ pub async fn upload(
     headers: HeaderMap,
     body: Body,
 ) -> Result<Response<Body>, UploadError> {
-    state
+    let max_filesize = state
         .auth_config
         .authorize(
             &AuthRequest::Upload,
@@ -54,7 +54,16 @@ pub async fn upload(
     let mut file = File::create(&upload_path)
         .await
         .map_err(|_| UploadError::InternalServerError)?;
+    let mut size: u64 = 0;
     while let Some(Ok(value)) = stream.next().await {
+        size += value.len() as u64;
+        if size > max_filesize {
+            drop(file);
+            remove_file(&upload_path)
+                .await
+                .map_err(|_| UploadError::InternalServerError)?;
+            return Err(UploadError::FileIsTooBig(max_filesize));
+        }
         file.write_all(&value)
             .await
             .map_err(|_| UploadError::InternalServerError)?;
