@@ -106,6 +106,6 @@ pub async fn upload(
         .header("Location", format!("/d/{real_filename}"))
         .header("Content-Type", "text/plain")
         .status(StatusCode::CREATED)
-        .body(Body::from(format!("Created: /d/{real_filename}")))
+        .body(Body::from(format!("/d/{real_filename}")))
         .unwrap())
 }
