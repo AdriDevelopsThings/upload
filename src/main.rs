@@ -30,7 +30,8 @@ async fn main() {
         auth_config,
         PathBuf::from(&upload_directory),
         PathBuf::from(&data_directory),
-    );
+    )
+    .await;
 
     ttl_killer::start_ttl_killer(state.clone());
 
