@@ -4,7 +4,7 @@ A simple webserver to upload and download files.
 ## Running
 Run upload with docker:
 ```
-docker run --name upload -v ./upload:/upload -v ./config:/config -p 80:80 ghcr.io/adridevelopsthings/upload:main
+docker run --name upload -v ./upload:/upload -v ./data:/data -v ./config:/config -p 80:80 ghcr.io/adridevelopsthings/upload:main
 ```
 (put the `auth.toml` file in the `./config` directory)
 
@@ -97,7 +97,7 @@ This is the body of the http message and contains the content of the file.
 ```
 
 # File data
-It's possible to set additional data while uploading a file with a `File-Data-$PARAMETER_NAME$` header.
+It's possible to set additional data while uploading a file with a `File-Data-$PARAMETER_NAME$` header. The data associated to a file will be saved in the data directory as json.
 
 ## Download permission
 Change the download permissions of the file with the `File-Data-Download-Permission` header. Possible values are:

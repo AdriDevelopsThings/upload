@@ -23,6 +23,9 @@ VOLUME [ "/config" ]
 ENV UPLOAD_DIRECTORY=/upload
 VOLUME [ "/upload" ]
 
+ENV DATA_DIRECTORY=/data
+VOLUME [ "/data" ]
+
 ENV LISTEN_ADDRESS=0.0.0.0:80
 EXPOSE 80
 
