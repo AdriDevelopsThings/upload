@@ -97,6 +97,13 @@ pub async fn upload(
     let real_filename = format!("{}_{filename}", &blake3_hex[..8]);
     let real_path = state.upload_directory.clone().join(&real_filename);
 
+    // check if the path already exists
+    if real_path.exists() {
+        println!("ERROR: User tried to upload a file but there is already one with the same name: {real_filename}");
+        remove_file(upload_path).await?;
+        return Err(UploadError::InternalServerError);
+    }
+
     // the upload is completed so the file will be renamed to the correct filename
     rename(&upload_path, real_path).await?;
 
