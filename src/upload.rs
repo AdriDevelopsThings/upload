@@ -11,7 +11,7 @@ use tokio::{
 };
 
 use crate::{
-    auth::AuthRequest, auth_helper::authorize_by_headers, error::UploadError,
+    auth::AuthRequest, auth_helper::authorize_by_headers, error::UploadError, file_data::FileData,
     random::generate_random_characters, state::State,
 };
 
@@ -99,6 +99,14 @@ pub async fn upload(
 
     // the upload is completed so the file will be renamed to the correct filename
     rename(&upload_path, real_path).await?;
+
+    // insert file data
+    let file_data = FileData::try_from(headers)?;
+    if !file_data.is_empty() {
+        let data_path = state.data_directory.join(&real_filename);
+        file_data.write_to(&data_path).await?;
+    }
+
     println!("INFO: Uploaded {real_filename}");
 
     // respond with a CREATED response that includes the link to the created file in body and the `Location` header

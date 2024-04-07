@@ -95,3 +95,15 @@ Content-Disposition: attachment; filename="md5hash_filename.txt"
 
 This is the body of the http message and contains the content of the file.
 ```
+
+# File data
+It's possible to set additional data while uploading a file with a `File-Data-$PARAMETER_NAME$` header.
+
+## Download permission
+Change the download permissions of the file with the `File-Data-Download-Permission` header. Possible values are:
+1. `none`: This makes it impossible to download the file even if the user is authenticated
+2. `unlimited`: Every user even unauthenticated can download the file independent of the auth.toml configuration
+
+
+## Delete after
+Delete the file automatically after `n` seconds. The header `File-Data-Delete-After` contains the seconds after which the file is deleted.

@@ -30,10 +30,19 @@ pub enum UploadError {
     IncompleteUpload(u64, u64),
     /// Invalid authorization includes the required auth scheme
     InvalidAuth(String),
+    /// A file data header value is invalid, the string contains the name of the argument
+    InvalidFileDataArgument(String),
 }
 
 impl From<io::Error> for UploadError {
     fn from(value: io::Error) -> Self {
+        error_while_request!(value);
+        UploadError::InternalServerError
+    }
+}
+
+impl From<serde_json::Error> for UploadError {
+    fn from(value: serde_json::Error) -> Self {
         error_while_request!(value);
         UploadError::InternalServerError
     }
@@ -56,6 +65,7 @@ impl IntoResponse for UploadError {
                 .header("WWW-Authenticate", scheme)
                 .body(Body::from("Unauthorized"))
                 .unwrap(),
+            Self::InvalidFileDataArgument(header) => (StatusCode::BAD_REQUEST, format!("Invalid file data header '{header}'")).into_response()
         }
     }
 }

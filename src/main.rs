@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::{env, path::PathBuf};
 
 use axum::{routing, serve, Router};
 use tokio::net::TcpListener;
@@ -9,15 +9,30 @@ mod auth;
 mod auth_helper;
 mod download;
 mod error;
+mod file_data;
 mod random;
 mod state;
+mod ttl_killer;
 mod upload;
 
 #[tokio::main]
 async fn main() {
     let auth_config = AuthConfig::read_from_file();
     let upload_directory = env::var("UPLOAD_DIRECTORY").unwrap_or_else(|_| "upload".to_string());
-    let state = State::new(auth_config, Path::new(&upload_directory).to_path_buf());
+    let data_directory = env::var("DATA_DIRECTORY").unwrap_or_else(|_| "data".to_string());
+    // check upload and data directory values
+    if upload_directory == data_directory
+        || PathBuf::from(&data_directory).starts_with(&upload_directory)
+    {
+        panic!("Data directory cannot be the same directory as the upload directory or be a subdirectory of it.\nChange the 'UPLOAD_DIRECTORY' or 'DATA_DIRECTORY' environment variable to another one.");
+    }
+    let state = State::new(
+        auth_config,
+        PathBuf::from(&upload_directory),
+        PathBuf::from(&data_directory),
+    );
+
+    ttl_killer::start_ttl_killer(state.clone());
 
     let router = Router::new()
         .route("/upload/:filename", routing::post(upload::upload))
