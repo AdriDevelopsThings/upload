@@ -24,22 +24,15 @@ pub async fn download(
     extract::State(state): extract::State<State>,
     headers: HeaderMap,
 ) -> Result<Response<Body>, UploadError> {
+    let download_path = state.upload_directory.join(&filename);
+    if !download_path.exists() {
+        return Err(UploadError::FileNotExists);
+    }
+
     // save the authorize error because downloading the file could be allowed exceptional
     let authorize_error = authorize_by_headers(&state, &headers, AuthRequest::Download).err();
 
-    let download_path = state.upload_directory.join(&filename);
-    if !download_path.exists() {
-        // respond with the authorize error if the authorization failed to avoid leaking if the file exists
-        if let Some(error) = authorize_error {
-            return Err(error);
-        } else {
-            return Err(UploadError::FileNotExists);
-        }
-    }
-
     // read file data and parse it
-    // we must be sure that the file existence will be leaked at this point (cause of time analysis), even
-    // if the user isn't authenticated and the file data doesn't allow unlimited access
     let file_data_path = state.data_directory.join(&filename);
     let file_data = FileData::read_from(&file_data_path)
         .await?
@@ -53,8 +46,7 @@ pub async fn download(
         }
 
         if matches!(download_permission, FileDataPermission::None) {
-            // we must be sure that the file existence will be leaked (cause of time analysis) even though
-            // the file seems to be not existing
+            // it should be like the file wouldn't exist
             return Err(UploadError::FileNotExists);
         }
     } else if let Some(authorize_error) = authorize_error {
